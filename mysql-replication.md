@@ -1,4 +1,4 @@
-# mysql database replication 
+# MySQL Database Replication 
 
 MySQL has serval types of replication.
 
@@ -11,14 +11,14 @@ Other servers operate in one of two replication modes
    1. `Statement-based` where secondary servers re-execute the sent commands.
    2. `Row-based` where the rows are applied to the secondary databases.  
 
-![Asynchronous Replication](images/async-replication-diagram.png)
+![Asynchronous Replication](https://dev.mysql.com/doc/refman/8.0/en/images/async-replication-diagram.png)  
 [Source](https://dev.mysql.com/doc/refman/8.0/en/group-replication-primary-secondary-replication.html)
 
 2. Semi-Synchronous Replication.  
     Semi-Synchronous Replication operates the same as asynchronous replication with an added synchronization step.
     This means that the primary server will wait before committing until the secondary servers acknowledge that the transaction has been received. Only after the transaction has been received on all servers does the primary commit the transaction.
 
-![Semi-Synchronous Replication](images/semisync-replication-diagram.png)
+![Semi-Synchronous Replication](https://dev.mysql.com/doc/refman/8.0/en/images/semisync-replication-diagram.png)  
 [Source](https://dev.mysql.com/doc/refman/8.0/en/group-replication-primary-secondary-replication.html)
 
 
@@ -44,16 +44,19 @@ Other servers operate in one of two replication modes
     Failure
     
 
-![Group Replication](images/gr-replication-diagram.png)
+![Group Replication](https://dev.mysql.com/doc/refman/8.0/en/images/gr-replication-diagram.png)
 
 [Source](https://dev.mysql.com/doc/refman/8.0/en/group-replication-summary.html)
 
+---
 
 # MySQL Cluster
 
 MySQL NDB cluster is a technology that enables clustering of databases in shared nothing architecture. NDB stands for Network Data Base and is the engine for clustering this differs from the standard Inno DB engine normally used by MySQL. 
 
 MySQL cluster has serval components.
+
+![Cluster Components](https://dev.mysql.com/doc/refman/8.0/en/images/cluster-components-1.png)
 
 1. ### NDB Management Server  
    The role of the management node is manage the other nodes within the cluster. Its functions include providing configuration data, starting and stopping nodes, and running backups. Because this node manages the other  nodes this node should be started first. This node provides commands to start, stop and manage other nodes in the cluster.
@@ -77,6 +80,7 @@ Individual nodes can be stopped and restarted allowing rolling restarts for conf
 Backing up and restoring of databases can be accomplished using the `NDB-native`. The standard mysqldump utility also works for this purpose. 
 All configuration of the node is done through one config file. 
 
+---
 
 ## Check Points 
 Data is saved to disk when when a check point is reached. A check point for NDB Cluster is when all committed transactions are stored on disk.  
@@ -97,6 +101,8 @@ E.g. If you have 4 nodes with replication set to 1 (4 / 1 = 4) then you have no 
 
 Setting number of replicas to 2 is recommend in production as setting to a higher value is unnecessary for data protection and a value of 1 gives no data protection.
 
+---
+
 ## Partitions 
 A partition is a portion of the data stored by the cluster. The default number of partitions used by the cluster depends on number of `LDM Threads`. 
 ```
@@ -111,7 +117,7 @@ Each fragment replica belongs to a single node and each node can and usually doe
 The following image depicts a single threaded NDB Cluster with 4 nodes and two replications creating two node groups. 
 
 
-![Fragment Replicas](images/fragment-replicas-groups-1-1.png)
+![Fragment Replicas](https://dev.mysql.com/doc/refman/8.0/en/images/fragment-replicas-groups-1-1.png)
 
 The data stored by the cluster is divided into 4 partitions numbered 0 through 3. Several copy's of the partitions are stored in the node group.
 
@@ -135,10 +141,11 @@ Storage Locations
 
 With this partitioning scheme as long a one of node in each group is operational the cluster keeps a complete copy of data.
 
-![Partitioning Scheme](images/replicas-groups-1-2.png)
+![Partitioning Scheme](https://dev.mysql.com/doc/refman/8.0/en/images/replicas-groups-1-2.png)  
 
 [Source](https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-basics.html)
 
+---
 
 ## MySQL Cluster Installation 
 [Docker Install](https://hub.docker.com/r/mysql/mysql-cluster/) 

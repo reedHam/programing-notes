@@ -1,0 +1,139 @@
+<body style="width: 50%; margin: auto;">
+    <h1>MySQL Database Replication</h1>
+    <p>MySQL has serval types of replication.</p>
+    <p>MySQL traditionally provides a primary secondary replication approach, both <code>Asynchronous Replication</code> and <code>Semi-Synchronous Replication</code> are examples of this.</p>
+    <ol>
+    <li>Asynchronous Replication.<br>
+    There is a source that is the primary and all other servers are secondary.<br>
+    The source executes transactions they are then committed and later sent to the others servers asynchronously.<br>
+    Other servers operate in one of two replication modes
+    <ol>
+    <li><code>Statement-based</code> where secondary servers re-execute the sent commands.</li>
+    <li><code>Row-based</code> where the rows are applied to the secondary databases.</li>
+    </ol>
+    </li>
+    </ol>
+    <p><img src="https://dev.mysql.com/doc/refman/8.0/en/images/async-replication-diagram.png" alt="Asynchronous Replication"><br>
+    <a href="https://dev.mysql.com/doc/refman/8.0/en/group-replication-primary-secondary-replication.html">Source</a></p>
+    <ol start="2">
+    <li>Semi-Synchronous Replication.<br>
+    Semi-Synchronous Replication operates the same as asynchronous replication with an added synchronization step.
+    This means that the primary server will wait before committing until the secondary servers acknowledge that the transaction has been received. Only after the transaction has been received on all servers does the primary commit the transaction.</li>
+    </ol>
+    <p><img src="https://dev.mysql.com/doc/refman/8.0/en/images/semisync-replication-diagram.png" alt="Semi-Synchronous Replication"><br>
+    <a href="https://dev.mysql.com/doc/refman/8.0/en/group-replication-primary-secondary-replication.html">Source</a></p>
+    <ol start="3">
+    <li>
+    <p>Group Replication.<br>
+    A replication group is a set of servers that all contain a full copy of the data, interaction between the servers is done with message passing. Message passing guarantees <code>atomic broadcast</code> meaning that either all servers receive the message or none do. If the message is received then all servers received it in the same order. This establishes a global total order for the transactions.
+    Each server in the group can execute transactions independently, but read-write transactions are only committed when agreed upon by the group.<br>
+    Read only transactions are immediate.<br>
+    When the originating server is ready to commit a read-write transaction, it sends the rows that were changed to the other servers.</p>
+    <p>Transaction Certification.<br>
+    Transactions are <code>certified</code> by the group of servers to be free of conflicts. A conflict occurs when two concurrent transactions that executed on different servers operate on the same row. Conflicts are resolved by committing the transaction that occurred first and the second transaction is aborted and rolled back on the originating server and dropped by the other servers.</p>
+    <p>Certified transactions do not need to be applied in the agreed order if this does not break <code>consistency</code> or <code>validity</code>. This means that group replication is an eventual consistency system while under load data may not be consistent between servers in the group.</p>
+    <p>For Example
+    In <code>Multi-Primary</code> mode a local transaction may be externalized immediately following <code>certification</code> even if there is a remote transaction that occurs before the local transaction in the global transaction order. This is permitted when certification has established no conflicts between the two transactions.</p>
+    <p>In <code>Single-Primary</code> there is a small chance that on the primary server transactions may be committed in a different order than the global transaction order.</p>
+    <p>Secondary read only servers apply transactions in the global order.</p>
+    <p>Failure</p>
+    </li>
+    </ol>
+    <p><img src="https://dev.mysql.com/doc/refman/8.0/en/images/gr-replication-diagram.png" alt="Group Replication"></p>
+    <p><a href="https://dev.mysql.com/doc/refman/8.0/en/group-replication-summary.html">Source</a></p>
+    <hr>
+    <h1>MySQL Cluster</h1>
+    <p>MySQL NDB cluster is a technology that enables clustering of databases in shared nothing architecture. NDB stands for Network Data Base and is the engine for clustering this differs from the standard Inno DB engine normally used by MySQL.</p>
+    <p>MySQL cluster has serval components.</p>
+    <p><img src="https://dev.mysql.com/doc/refman/8.0/en/images/cluster-components-1.png" alt="Cluster Components"></p>
+    <ol>
+    <li>
+    <h3>NDB Management Server</h3>
+    <p>The role of the management node is manage the other nodes within the cluster. Its functions include providing configuration data, starting and stopping nodes, and running backups. Because this node manages the other  nodes this node should be started first. This node provides commands to start, stop and manage other nodes in the cluster.</p>
+    </li>
+    <li>
+    <h3>Data Nodes</h3>
+    <p>The data nodes are store crusted data. The amount of data nodes follows the formula (Number of fragments * number of fragment replicas). E.g. With two replicas each having two fragments you would need 4 data nodes. One fragment replica gives no redundancy protection.
+    Data nodes are typically store all tables in memory, but some data can be stored on disk.</p>
+    <p>NDB Cluster is designed assuming that all data nodes have the same processing power, bandwidth, and memory space. Data Nodes should be stored on separate computers to create redundancy.</p>
+    </li>
+    <li>
+    <h3>SQL Nodes</h3>
+    <p>An SQL Node is the API to the NDB cluster. The SQL node is a traditional MyQL server that runs the <code>NDBCLUSTER</code> engine.</p>
+    <p><a href="https://dev.mysql.com/doc/ndbapi/en/ndb-getting-started.html">More Information About NDB API</a></p>
+    </li>
+    <li>
+    <h3>Clients/APIs</h3>
+    <p>User systems or web APIs that connect to the database.</p>
+    </li>
+    </ol>
+    <p>All components work together to form a cluster. Tables are stored in the data nodes and changes made on one node are immediately available to all other nodes in the cluster.<br>
+    Individual nodes can be stopped and restarted allowing rolling restarts for configuration or maintenance.
+    Backing up and restoring of databases can be accomplished using the <code>NDB-native</code>. The standard mysqldump utility also works for this purpose.
+    All configuration of the node is done through one config file.</p>
+    <hr>
+    <h2>Check Points</h2>
+    <p>Data is saved to disk when when a check point is reached. A check point for NDB Cluster is when all committed transactions are stored on disk.</p>
+    <h3>Local Checkpoint</h3>
+    <p>Local checkpoints are specific to a single node and take place concurrently on all nodes. A local checkpoint takes place every few minutes.</p>
+    <h3>Global Checkpoint</h3>
+    <p>A global checkpoint takes place every few seconds when all transactions for all nodes are synchronized and the <code>redo-log</code> is flushed to disk.</p>
+    <h2>Node Groups</h2>
+    <p>A Node Group is a collection of one or more nodes or <code>fragment replicas</code>.
+    The number of groups is not configurable and is the result of the number of nodes divided by the number of <code>fragment replicas</code>.</p>
+    <pre><code>[# of node groups] = [# of data nodes] / NoOfReplicas
+    </code></pre>
+    <p>E.g. If you have 4 nodes with replication set to 1 (4 / 1 = 4) then you have no replicas and 4 node groups. If number of replicas is set to 2 (4 / 2 = 2) then you will have two node groups and so on.</p>
+    <p>Setting number of replicas to 2 is recommend in production as setting to a higher value is unnecessary for data protection and a value of 1 gives no data protection.</p>
+    <hr>
+    <h2>Partitions</h2>
+    <p>A partition is a portion of the data stored by the cluster. The default number of partitions used by the cluster depends on number of <code>LDM Threads</code>.</p>
+    <pre><code>[# of partitions] = [# of data nodes] * [# of LDM threads]
+    </code></pre>
+    <p>This is controlled by setting MaxNoOfExecutionThreads when using the multi threaded <code>ndbmtd</code>. When using the single threaded <code>ndbd</code> the number of partitions is equal to the number of nodes in the cluster (this is also the case when using <code>ndbmtd</code> with MaxNoOfExecutionThreads set to 3 or less).</p>
+    <h2>Fragment Replicas</h2>
+    <p>A fragment replica is a copy of a cluster partition. Each node in a node group stores a fragment replica. The number of fragment replicas is equal to the number of nodes per group.
+    Each fragment replica belongs to a single node and each node can and usually does store serval fragment replicas.</p>
+    <p>The following image depicts a single threaded NDB Cluster with 4 nodes and two replications creating two node groups.</p>
+    <p><img src="https://dev.mysql.com/doc/refman/8.0/en/images/fragment-replicas-groups-1-1.png" alt="Fragment Replicas"></p>
+    <p>The data stored by the cluster is divided into 4 partitions numbered 0 through 3. Several copy's of the partitions are stored in the node group.</p>
+    <p>Storage Locations</p>
+    <ul>
+    <li>Partition: 0
+    <ul>
+    <li>Node Group: 0</li>
+    <li>Primary Replica Node: 1</li>
+    <li>Backup Replica Node: 2</li>
+    </ul>
+    </li>
+    <li>Partition: 1
+    <ul>
+    <li>Node Group: 1</li>
+    <li>Primary Replica Node: 3</li>
+    <li>Backup Replica Node: 4</li>
+    </ul>
+    </li>
+    <li>Partition: 2
+    <ul>
+    <li>Node Group: 0</li>
+    <li>Primary Replica Node: 2</li>
+    <li>Backup Replica Node: 1</li>
+    </ul>
+    </li>
+    <li>Partition: 3
+    <ul>
+    <li>Node Group: 1</li>
+    <li>Primary Replica Node: 4</li>
+    <li>Backup Replica Node: 3</li>
+    </ul>
+    </li>
+    </ul>
+    <p>With this partitioning scheme as long a one of node in each group is operational the cluster keeps a complete copy of data.</p>
+    <p><img src="https://dev.mysql.com/doc/refman/8.0/en/images/replicas-groups-1-2.png" alt="Partitioning Scheme"></p>
+    <p><a href="https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-basics.html">Source</a></p>
+    <hr>
+    <h2>MySQL Cluster Installation</h2>
+    <p><a href="https://hub.docker.com/r/mysql/mysql-cluster/">Docker Install</a>
+    (Considered Experimental Recommend not to use in production).</p>
+    <p><a href="https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-install-linux-binary.html">Binary Install</a></p>
+</body>
