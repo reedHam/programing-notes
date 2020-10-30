@@ -18,3 +18,12 @@ sudo ufw allow 7946     comment 'communication among nodes'
 sudo ufw allow 4789/udp comment 'overlay network traffic'
 sudo ufw enable
 
+
+# MYSQL CLUSTER
+sudo apt-get update
+sudo apt-get install mysql-apt-config
+sudo apt-get install mysql-cluster-community-server #SQL NODE
+#sudo apt-get install mysql-cluster-community-management-server #MANAGEMENT NODE
+#sudo apt-get install mysql-cluster-community-data-node #DATA NODE
+groupadd mysql
+useradd -g mysql -s /bin/false mysql

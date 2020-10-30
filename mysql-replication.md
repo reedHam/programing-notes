@@ -39,9 +39,6 @@ Other servers operate in one of two replication modes
     In `Single-Primary` there is a small chance that on the primary server transactions may be committed in a different order than the global transaction order.
 
     Secondary read only servers apply transactions in the global order.
-
-
-    Failure
     
 
 ![Group Replication](https://dev.mysql.com/doc/refman/8.0/en/images/gr-replication-diagram.png)
@@ -148,7 +145,165 @@ With this partitioning scheme as long a one of node in each group is operational
 ---
 
 ## MySQL Cluster Installation 
+
+[APT instruction](https://dev.mysql.com/doc/mysql-apt-repo-quick-guide/en/#repo-qg-apt-cluster-install)
+
+When using the apt installation it is necessary to change the instructions in the other installation guides as such.  
+All configuration files (like my.cnf) are under /etc/mysql  
+All binaries, libraries, headers, etc., are under /usr/bin and /usr/sbin  
+The data directory is /var/lib/mysql  
+
+[Normal Install](https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-installation.html)
+ 
 [Docker Install](https://hub.docker.com/r/mysql/mysql-cluster/) 
 (Considered Experimental Recommend not to use in production).  
 
-[Binary Install](https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-install-linux-binary.html)
+---
+
+## MySQL Cluster configuration
+
+One configuration file is necessary for each node.
+
+Management Nodes require a `config.ini` file with
+  * How many replicas
+  * How much memory to allocate for data and indexes
+  * Where to find other nodes
+  * Where to save data nodes on disk
+
+### Example `config.ini` 
+```
+[ndbd default]
+# Options affecting ndbd processes on all data nodes:
+NoOfReplicas=2    # Number of fragment replicas
+DataMemory=98M    # How much memory to allocate for data storage
+
+[ndb_mgmd]
+# Management process options:
+HostName=198.51.100.10          # Hostname or IP address of management node
+DataDir=/var/lib/mysql-cluster  # Directory for management node log files
+
+[ndbd]
+# Options for data node "A":
+                                # (one [ndbd] section per data node)
+HostName=198.51.100.30          # Hostname or IP address
+NodeId=2                        # Node ID for this data node
+DataDir=/usr/local/mysql/data   # Directory for this data node's data files
+
+[ndbd]
+# Options for data node "B":
+HostName=198.51.100.40          # Hostname or IP address
+NodeId=3                        # Node ID for this data node
+DataDir=/usr/local/mysql/data   # Directory for this data node's data files
+
+[mysqld]
+# SQL node options:
+HostName=198.51.100.20          # Hostname or IP address
+                                # (additional mysqld connections can be
+                                # specified for this node for various
+                                # purposes such as running ndb_restore)
+```
+
+`config.ini` location is specified when starting the cluster. E.G.
+
+```
+ndb_mgmd -f /var/lib/mysql-cluster/config.ini
+```
+Data Nodes and Sql Nodes require `my.cnf` file with 
+  * a management node connection string
+  * a flag to enable the NDBCLUSTER storage engine.  
+
+### Example `my.cnf`
+  
+```
+[mysqld]
+# Options for mysqld process:
+ndbcluster                      # run NDB storage engine
+
+[mysql_cluster]
+# Options for NDB Cluster processes:
+ndb-connectstring=198.51.100.10  # location of management server
+```
+
+`my.cnf` file is located in /etc/mysql when installed using APT
+
+
+[Source](https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-install-configuration.html)
+
+
+# Initial Startup
+
+On the host node use this command to start the management process.
+```
+ndb_mgmd -f /var/lib/mysql-cluster/config.ini
+```
+
+On each of the data nodes use this command to start the NDB process.
+```
+ndbd
+```
+
+use this command on the management node to show the result of the startup.
+```
+shell> ndb_mgm
+ndb_mgm> SHOW
+```
+
+
+## Data 
+
+For a table to be replicated in the cluster it must use the NDBCLUSTER storage engine.
+
+This is spesifyed using either
+  * ENGINE=NDBCLUSTER
+  * ENGINE=NDB  
+  
+When creating or altering the table.
+
+E.G.
+```
+CREATE TABLE tbl_name (col_name column_definitions) ENGINE=NDBCLUSTER;
+```
+Or
+```
+ALTER TABLE tbl_name ENGINE=NDBCLUSTER;
+```
+
+Existing non NDBCLUSTER databases can be imported using the mysqldump utility. 
+
+   1. Create sqlscript with mysqldump
+   2. Open script in text editor and replace or add ENGINE=NDB to create table statements. (The easiest way to accomplish this is to do a search-and-replace on the file that contains the definitions and replace all instances of TYPE=engine_name or ENGINE=engine_name with ENGINE=NDBCLUSTER.)
+   3. This can then be imported using the following command.
+   ```
+   mysql DATABASE < MYSQLDUMP.sql
+   ```
+
+## Shutdown and Restarting
+
+Use the following command to shutdown the cluster.
+```
+ndb_mgm -e shutdown
+```
+The -e option here is used to pass a command to the ndb_mgm client from the shell.
+`shutdown` causes the ndb_mgm, ndb_mgmd, and any ndbd or ndbmtd processes to terminate gracefully. 
+
+Restarting can be accomplished using with these commands.
+
+On the management host use this command to start the management process.
+```
+ndb_mgmd -f /var/lib/mysql-cluster/config.ini
+```
+
+On each of the data nodes use this command to start the NDB process.
+```
+ndbd
+```
+
+On the SQL host
+```
+mysqld_safe &
+```
+[Source](https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-install-shutdown-restart.html)
+
+## Upgrading and Downgrading
+
+[Source](https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-upgrade-downgrade.html)
